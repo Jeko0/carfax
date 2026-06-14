@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from datetime import datetime
 from typing import Optional
 import re
@@ -139,3 +139,62 @@ class HistoryRecordOut(BaseModel):
 
 class VehicleWithHistory(VehicleOut):
     history_records: list[HistoryRecordOut] = []
+
+
+class TopsisWeights(BaseModel):
+    service_history: float
+    accidents: float
+    owners: float
+    mileage: float
+    tech_inspection: float
+
+    @model_validator(mode="after")
+    def all_non_negative(self) -> "TopsisWeights":
+        for field, val in self.__dict__.items():
+            if val < 0:
+                raise ValueError(f"{field} weight must be >= 0")
+        return self
+
+
+class CompareRequest(BaseModel):
+    vins: list[str]
+    weights: TopsisWeights
+
+    @field_validator("vins")
+    @classmethod
+    def validate_vins(cls, v: list[str]) -> list[str]:
+        v = [x.upper().strip() for x in v]
+        if not (2 <= len(v) <= 4):
+            raise ValueError("Provide between 2 and 4 VINs")
+        if len(v) != len(set(v)):
+            raise ValueError("Duplicate VINs")
+        return v
+
+
+class CarRawData(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
+    vin: str
+    model_label: str          # "Toyota Camry 2.5H · 2020"
+    year: int
+    fuel_type: Optional[str]
+    emission_standard: Optional[str]
+    fuel_consumption: Optional[float]
+    drive_type: Optional[str]
+    mileage: Optional[int]
+    owner_count: int
+    service_count: int
+    accident_count: int
+    tech_pass: int            # inspections passed
+    tech_total: int           # inspections total
+
+
+class CarRankEntry(BaseModel):
+    rank: int
+    topsis_score: float
+    car: CarRawData
+
+
+class CompareResponse(BaseModel):
+    weights_used: TopsisWeights
+    ranking: list[CarRankEntry]

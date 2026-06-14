@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./carfax.db"
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1500
 
     class Config:
         env_file = ".env"
